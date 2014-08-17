@@ -1,0 +1,13 @@
+#!/usr/bin/env ruby
+
+begin
+  require "devilicious"
+rescue LoadError
+  $LOAD_PATH.unshift File.expand_path("../lib", __dir__)
+  Dir[File.expand_path("../lib/**/*.rb", __dir__)].each { |file| require file }
+end
+
+
+arbitrer = Devilicious::Arbitrer.new
+arbitrer.run!
+
