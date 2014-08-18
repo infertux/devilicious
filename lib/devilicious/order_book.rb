@@ -1,6 +1,7 @@
 module Devilicious
   class OrderBook
     attr_reader :asks, :bids
+    attr_accessor :market
 
     def initialize(hash)
       @asks = hash.delete(:asks).sort_by(&:price).freeze # buy
@@ -60,7 +61,7 @@ module Devilicious
 
       offers.each do |offer|
         if total_volume <= max_volume
-          good_offers << offer
+          good_offers << offer.dup # NOTE: dup because we're gonna mess with its volume below
           total_volume += offer.volume
         end
       end

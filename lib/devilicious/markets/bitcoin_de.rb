@@ -5,27 +5,31 @@ module Devilicious
         "EUR"
       end
 
+      def trade_fee
+        BigDecimal.new("0.005").freeze # 0.5% - see https://www.bitcoin.de/en/infos#gebuehren
+      end
+
       def refresh_order_book!
-        html = get_html("https://www.bitcoin.de/en")
+        html = get_html("https://www.bitcoin.de/en/market")
 
-        raise unless html.match(/<tbody id="box_buy_sell_offer" class="fs11">\s*<tr[^>]+data-critical-price="([\d\.]+)" data-critical-amount="([\d\.]+)">/m)
-        asks = [ Offer.new(price: Money.new($1, fiat_currency), volume: $2) ]
+        asks = format_asks_bids(html, "offer")
+        bids = format_asks_bids(html, "order")
 
-        raise unless html.match(/<tbody id="box_buy_sell_order" class="fs11">\s*<tr[^>]+data-critical-price="([\d\.]+)" data-critical-amount="([\d\.]+)">/m)
-        bids = [ Offer.new(price: Money.new($1, fiat_currency), volume: $2) ]
-        # FIXME: get other asks/bids
-
-        Devilicious.log "Order book for #{self} has been refreshed"
+        mark_as_refreshed
         @order_book = OrderBook.new(asks: asks, bids: bids)
       end
 
     private
 
-      # def format_asks_bids(json)
-      #   json.map do |price, volume|
-      #     Offer.new(price: price, volume: volume)
-      #   end
-      # end
+      def format_asks_bids(html, type)
+        raise unless html.match(/<tbody id="trade_#{type}_results_table_body"(.*)<\/tbody>/m)
+
+        $1.each_line.select { |line| line.include?("data-critical-price") }.map do |line|
+          raise unless line.match(/<tr[^>]+data-critical-price="([\d\.]+)" data-amount="([\d\.]+)">/)
+
+          Offer.new(price: Money.new($1, fiat_currency), volume: $2).freeze
+        end
+      end
     end
   end
 end

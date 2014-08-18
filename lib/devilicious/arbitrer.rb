@@ -7,26 +7,33 @@ module Devilicious
     end
 
     def run!
+      @market_queue = []
       spawn_observers!
 
       loop do
-        markets.each do |market_1|
-          markets.each do |market_2|
-            next if market_1 == market_2
+        sleep 1 while @market_queue.empty?
 
-            sleep 5
-            # Devilicious.log "Checking opportunity buying from #{market_1} and selling at #{market_2}... "
+        market_1 = @market_queue.shift
 
-            order_book_1 = market_1.order_book
-            order_book_2 = market_2.order_book
+        markets.each do |market_2|
+          next if market_1 == market_2
 
-            if order_book_1.nil? || order_book_2.nil?
-              Devilicious.log "Order book(s) not available yet, skipping"
-              next
-            end
-
-            check_for_opportunity(order_book_1.dup, order_book_2.dup)
+          if market_2.order_book.nil?
+            Log.debug "Order book for #{market_2} not available yet, skipping"
+            next
           end
+
+          # dup everything to avoid race conditions while calculating opportunities
+          order_book_1 = market_1.order_book.dup
+          order_book_2 = market_2.order_book.dup
+          order_book_1.market = market_1.dup
+          order_book_2.market = market_2.dup
+
+          Log.debug "Checking opportunity buying from #{market_1} and selling at #{market_2}... "
+          check_for_opportunity(order_book_1, order_book_2)
+
+          Log.debug "Checking opportunity buying from #{market_2} and selling at #{market_1}... "
+          check_for_opportunity(order_book_2, order_book_1)
         end
       end
     end
@@ -40,15 +47,15 @@ module Devilicious
       Thread.new do
         loop do
           threads = markets.map do |market|
-            Devilicious.log "Refreshing order book for #{market}..."
-            Thread.new { market.refresh_order_book! }
+            Log.debug "Refreshing order book for #{market}..."
+            Thread.new { market.refresh_order_book!; @market_queue << market }
           end
 
-          sleep 60
+          sleep 20
 
           alive_threads = threads.select(&:alive?)
           unless alive_threads.empty?
-            Devilicious.log "Timeout for threads: #{alive_threads.inspect}"
+            Log.warn "Timeout for threads: #{alive_threads.inspect}"
           end
 
           threads.each do |thread|
@@ -62,12 +69,7 @@ module Devilicious
     end
 
     def opportunity?(order_book_1, order_book_2)
-      if order_book_1.lowest_ask.price < order_book_2.highest_bid.price
-        # Devilicious.log "BUY at #{order_book_1.lowest_ask.price} and SELL at #{order_book_2.highest_bid.price}"
-        true
-      else
-        false
-      end
+      order_book_1.lowest_ask.price < order_book_2.highest_bid.price
     end
 
     def check_for_opportunity(order_book_1, order_book_2)
@@ -75,20 +77,58 @@ module Devilicious
 
       initial_ask_offer = order_book_1.weighted_asks_up_to(order_book_2.highest_bid.price)
       initial_bid_offer = order_book_2.weighted_bids_down_to(order_book_1.lowest_ask.price)
-      volume = [initial_ask_offer.volume, initial_bid_offer.volume].min
-
       raise if initial_ask_offer.price.currency != initial_bid_offer.price.currency # FIXME
 
-      ask_offer = order_book_1.min_ask_price_for_volume(order_book_2.highest_bid.price, volume)
-      bid_offer = order_book_2.max_bid_price_for_volume(order_book_1.lowest_ask.price, volume)
+      Log.info "=" * 132
 
-      fiat_out = ask_offer.price * volume
-      fiat_in = bid_offer.price * volume
+      last_volume = -1
 
-      profit = (bid_offer.price - ask_offer.price) * volume
-      # profit *= BigDecimal.new("100 - 0.2") / 100 # 0.2% fee
+      [BigDecimal.new("22E6"), Config.max_volume].each do |max_volume_from_config|
+        max_volume = [initial_ask_offer.volume, initial_bid_offer.volume, max_volume_from_config].min
+        ask_offer, bid_offer, volume, profit, fee = find_best_volume(order_book_1, order_book_2, max_volume)
 
-      Devilicious.log "BUY #{volume.to_f} XBT for #{fiat_out} at #{ask_offer.price} (#{ask_offer.weighted_price} weighted average) and SELL for #{fiat_in} at #{bid_offer.price} (#{bid_offer.weighted_price}) - PROFIT = #{profit}"
+        next if volume == last_volume # don't display the same trade twice
+        last_volume = volume
+
+        fiat_out = ask_offer.price * volume
+        fiat_in = bid_offer.price * volume
+
+        Log.info \
+          "BUY \e[1m#{volume.to_f} XBT\e[m from \e[1m#{order_book_1.market}\e[m for #{fiat_out} at \e[1m#{ask_offer.price}\e[m (#{ask_offer.weighted_price} weighted average)" <<
+          " and SELL at \e[1m#{order_book_2.market}\e[m for #{fiat_in} at \e[1m#{bid_offer.price}\e[m (#{bid_offer.weighted_price})" <<
+          " - PROFIT = \e[1m#{profit}\e[m (including #{fee} fee)"
+      end
+    end
+
+    def find_best_volume(order_book_1, order_book_2, max_volume)
+      volume = best_volume = BigDecimal.new(Config.min_volume)
+      best_profit = 0
+
+      while volume < max_volume
+        ask_offer = order_book_1.min_ask_price_for_volume(order_book_2.highest_bid.price, volume)
+        bid_offer = order_book_2.max_bid_price_for_volume(order_book_1.lowest_ask.price, volume)
+
+        fee = (
+          ask_offer.price * order_book_1.market.trade_fee +
+          bid_offer.price * order_book_2.market.trade_fee
+        ) * volume
+
+        profit = (bid_offer.price - ask_offer.price) * volume - fee
+
+        if profit > best_profit
+          best_profit, best_volume, best_profit_fee = profit, volume, fee
+        end
+
+        volume += BigDecimal.new("0.1")
+      end
+
+      [
+        order_book_1.min_ask_price_for_volume(order_book_2.highest_bid.price, best_volume),
+        order_book_2.max_bid_price_for_volume(order_book_1.lowest_ask.price, best_volume),
+        best_volume,
+        best_profit,
+        best_profit_fee,
+      ]
     end
   end
 end
