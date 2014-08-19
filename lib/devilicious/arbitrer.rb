@@ -119,7 +119,7 @@ module Devilicious
       volume = best_volume = BigDecimal.new(Devilicious.config.min_volume)
       best_profit = 0
 
-      while volume < max_volume
+      while volume <= max_volume
         ask_offer = order_book_1.min_ask_price_for_volume(order_book_2.highest_bid.price, volume)
         bid_offer = order_book_2.max_bid_price_for_volume(order_book_1.lowest_ask.price, volume)
 

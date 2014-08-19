@@ -1,5 +1,5 @@
-require 'optparse'
-require 'ostruct'
+require "optparse"
+require "ostruct"
 
 module Devilicious
   class Config
@@ -8,9 +8,9 @@ module Devilicious
       config.debug = false
       config.verbose = false
       config.formatter = "Verbose"
-      config.max_volume = BigDecimal.new("10").freeze
-      config.min_volume = BigDecimal.new("0.1").freeze
-      config.default_fiat_currency = "EUR".freeze # ideally the most used currency so we do as little conversions as possible
+      config.max_volume = BigDecimal.new("10")
+      config.min_volume = BigDecimal.new("0.1")
+      config.default_fiat_currency = "EUR" # ideally the most used currency so we do as little conversions as possible
 
       opt_parser = OptionParser.new do |opts|
         opts.banner = "Usage: devilicious [config]"
@@ -31,6 +31,10 @@ module Devilicious
           config.formatter = f
         end
 
+        opts.on("-m", "--max-volume N", "Maximum volume to trade") do |m|
+          config.max_volume = BigDecimal.new(m)
+        end
+
         opts.separator ""
         opts.separator "Common config:"
 
@@ -41,7 +45,7 @@ module Devilicious
       end
 
       opt_parser.parse!(args)
-      config
+      config.freeze
     end
   end
 end
