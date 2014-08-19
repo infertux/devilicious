@@ -19,7 +19,7 @@ module Devilicious
       def get_html(url)
         begin
           open(url).read
-        rescue OpenURI::HTTPError
+        rescue OpenURI::HTTPError, Zlib::BufError
           retry
         end
       end

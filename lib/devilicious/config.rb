@@ -10,23 +10,16 @@ module Devilicious
       config.formatter = "Verbose"
       config.max_volume = BigDecimal.new("10")
       config.min_volume = BigDecimal.new("0.1")
+      config.beep_profit_threshold = BigDecimal.new("-1") # negative means disabled
       config.default_fiat_currency = "EUR" # ideally the most used currency so we do as little conversions as possible
+      config.market_refresh_rate = 30 # order books expire delay in seconds
 
       opt_parser = OptionParser.new do |opts|
         opts.banner = "Usage: devilicious [config]"
 
         opts.separator ""
-        opts.separator "Specific config:"
 
-        opts.on("-v", "--verbose", "Run verbosely") do |v|
-          config.verbose = v
-        end
-
-        opts.on("-d", "--debug", "Debug mode") do |d|
-          config.debug = d
-        end
-
-        opts.on("-f", "--formatter [TYPE]", %w(Verbose Summary),
+        opts.on("-f", "--formatter TYPE", %w(Verbose Summary),
                 "Select formatter (#{Formatter.list.keys.sort.join(", ")})") do |f|
           config.formatter = f
         end
@@ -35,8 +28,17 @@ module Devilicious
           config.max_volume = BigDecimal.new(m)
         end
 
-        opts.separator ""
-        opts.separator "Common config:"
+        opts.on("-b", "--beep-profit-threshold N", "Beep the fuck out of the speakers when profit threshold is reached") do |t|
+          config.beep_profit_threshold = BigDecimal.new(t)
+        end
+
+        opts.on("-v", "--verbose", "Run verbosely") do |v|
+          config.verbose = v
+        end
+
+        opts.on("-d", "--debug", "Debug mode") do |d|
+          config.debug = d
+        end
 
         opts.on_tail("-h", "--help", "Show this message") do
           puts opts

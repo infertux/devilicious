@@ -33,17 +33,8 @@ module Devilicious
           order_book_1.market = market_1.dup
           order_book_2.market = market_2.dup
 
-          Log.debug "Checking opportunity buying from #{market_1} and selling at #{market_2}... "
-          if opportunity = check_for_opportunity(order_book_1, order_book_2)
-            formatter = Formatter.list[Devilicious.config.formatter]
-            formatter.output(opportunity)
-          end
-
-          Log.debug "Checking opportunity buying from #{market_2} and selling at #{market_1}... "
-          if opportunity = check_for_opportunity(order_book_2, order_book_1)
-            formatter = Formatter.list[Devilicious.config.formatter]
-            formatter.output(opportunity)
-          end
+          check_for_opportunity(order_book_1, order_book_2)
+          check_for_opportunity(order_book_2, order_book_1)
         end
       end
     end
@@ -61,7 +52,7 @@ module Devilicious
             Thread.new { market.refresh_order_book!; @market_queue << market }
           end
 
-          sleep 20
+          sleep Devilicious.config.market_refresh_rate
 
           alive_threads = threads.select(&:alive?)
           unless alive_threads.empty?
@@ -78,12 +69,23 @@ module Devilicious
       end
     end
 
-    def opportunity?(order_book_1, order_book_2)
-      order_book_1.lowest_ask.price < order_book_2.highest_bid.price
+    def check_for_opportunity(order_book_1, order_book_2)
+      Log.debug "Checking opportunity buying from #{order_book_1.market} and selling at #{order_book_2.market}... "
+      if opportunity = find_best_opportunity(order_book_1, order_book_2)
+        threshold = Money.new(Devilicious.config.beep_profit_threshold, Devilicious.config.default_fiat_currency)
+        if threshold > 0 && opportunity.profit >= threshold
+          Thread.new do
+            3.times { system "/usr/bin/aplay", "-q", "#{__dir__}/sounds/boom.wav" }
+          end
+        end
+
+        formatter = Formatter.list[Devilicious.config.formatter]
+        formatter.output(opportunity)
+      end
     end
 
-    def check_for_opportunity(order_book_1, order_book_2)
-      return unless opportunity?(order_book_1, order_book_2)
+    def find_best_opportunity(order_book_1, order_book_2)
+      return unless order_book_1.lowest_ask.price < order_book_2.highest_bid.price
 
       initial_ask_offer = order_book_1.weighted_asks_up_to(order_book_2.highest_bid.price)
       initial_bid_offer = order_book_2.weighted_bids_down_to(order_book_1.lowest_ask.price)
