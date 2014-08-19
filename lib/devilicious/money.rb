@@ -10,14 +10,39 @@ module Devilicious
       super(amount)
     end
 
+    def exchange_to new_currency
+      new_amount = CurrencyConverter.convert(self, currency, new_currency)
+
+      self.class.new new_amount, new_currency
+    end
+
     def to_s
       sprintf("%.#{decimal_places}f", self) << " " << currency
     end
 
-    def +(other); self.class.new super, currency; end
-    def -(other); self.class.new super, currency; end
-    def *(other); self.class.new super, currency; end
-    def /(other); self.class.new super, currency; end
+    def inspect
+      "#<Devilicious::Money amount=#{to_s}>"
+    end
+
+    def +(other)
+      assert_currency! other
+      self.class.new super, currency
+    end
+
+    def -(other)
+      assert_currency! other
+      self.class.new super, currency
+    end
+
+    def *(other)
+      assert_currency! other
+      self.class.new super, currency
+    end
+
+    def /(other)
+      assert_currency! other
+      self.class.new super, currency
+    end
 
   private
 
@@ -29,6 +54,10 @@ module Devilicious
       end
 
       max
+    end
+
+    def assert_currency!(other)
+      raise "Currency mismatch: #{self.inspect} #{other.inspect}" if other.is_a?(self.class) && other.currency != currency
     end
   end
 end

@@ -4,18 +4,25 @@ module Devilicious
 
   module_function
 
-    def info message, output = $stdout
-      @semaphore.synchronize do
-        output.puts "#{Time.now} #{message}"
-      end
+    def info message, options = {}
+      options = {
+        output: $stdout,
+        timestamp: true
+      }.merge(options)
+
+      message = "#{Time.now} #{message}" if options.fetch(:timestamp)
+
+      @semaphore.synchronize { options.fetch(:output).puts message }
     end
 
-    def debug message
-      info message if Devilicious.debug?
+    def debug message, options = {}
+      info message, options if Devilicious.config.debug
     end
 
-    def warn message
-      info "[WARN] #{message}", $stderr
+    def warn message, options = {}
+      options = {output: $stderr}.merge(options)
+
+      info "[WARN] #{message}", options
     end
   end
 end

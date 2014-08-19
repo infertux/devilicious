@@ -1,3 +1,5 @@
+require "devilicious/markets/base"
+
 module Devilicious
   module Market
     class BitcoinDe < Base

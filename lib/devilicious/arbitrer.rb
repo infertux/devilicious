@@ -1,9 +1,13 @@
 module Devilicious
   class Arbitrer
     def markets
-      @markets ||= [Market::Kraken, Market::BitcoinDe].map do |market|
-        market.new
-      end
+      @markets ||= [
+
+        Market::Kraken,
+        Market::BitcoinDe,
+        # Market::BtcE,
+
+      ].map { |market| market.new }
     end
 
     def run!
@@ -30,10 +34,16 @@ module Devilicious
           order_book_2.market = market_2.dup
 
           Log.debug "Checking opportunity buying from #{market_1} and selling at #{market_2}... "
-          check_for_opportunity(order_book_1, order_book_2)
+          if opportunity = check_for_opportunity(order_book_1, order_book_2)
+            formatter = Formatter.list[Devilicious.config.formatter]
+            formatter.output(opportunity)
+          end
 
           Log.debug "Checking opportunity buying from #{market_2} and selling at #{market_1}... "
-          check_for_opportunity(order_book_2, order_book_1)
+          if opportunity = check_for_opportunity(order_book_2, order_book_1)
+            formatter = Formatter.list[Devilicious.config.formatter]
+            formatter.output(opportunity)
+          end
         end
       end
     end
@@ -55,7 +65,7 @@ module Devilicious
 
           alive_threads = threads.select(&:alive?)
           unless alive_threads.empty?
-            Log.warn "Timeout for threads: #{alive_threads.inspect}"
+            Log.warn "Timeout for #{alive_threads.size} observer threads"
           end
 
           threads.each do |thread|
@@ -77,31 +87,36 @@ module Devilicious
 
       initial_ask_offer = order_book_1.weighted_asks_up_to(order_book_2.highest_bid.price)
       initial_bid_offer = order_book_2.weighted_bids_down_to(order_book_1.lowest_ask.price)
-      raise if initial_ask_offer.price.currency != initial_bid_offer.price.currency # FIXME
 
-      Log.info "=" * 132
+      _dummy = initial_ask_offer.price + initial_bid_offer.price # NOTE: will raise if currency mismatch
 
-      last_volume = -1
+      max_volume = [initial_ask_offer.volume, initial_bid_offer.volume].min
 
-      [BigDecimal.new("22E6"), Config.max_volume].each do |max_volume_from_config|
-        max_volume = [initial_ask_offer.volume, initial_bid_offer.volume, max_volume_from_config].min
-        ask_offer, bid_offer, volume, profit, fee = find_best_volume(order_book_1, order_book_2, max_volume)
+      best_offer_limited_volume = find_best_volume(
+        order_book_1, order_book_2,
+        [max_volume, Devilicious.config.max_volume].min
+      )
 
-        next if volume == last_volume # don't display the same trade twice
-        last_volume = volume
+      best_offer_unlimited_volume = find_best_volume(
+        order_book_1, order_book_2,
+        [max_volume, BigDecimal.new("22E6")].min
+      )
 
-        fiat_out = ask_offer.price * volume
-        fiat_in = bid_offer.price * volume
+      best_volume = if best_offer_limited_volume.profit > best_offer_unlimited_volume.profit
+        best_offer_limited_volume
+      else
+        best_offer_unlimited_volume
+      end.volume
 
-        Log.info \
-          "BUY \e[1m#{volume.to_f} XBT\e[m from \e[1m#{order_book_1.market}\e[m for #{fiat_out} at \e[1m#{ask_offer.price}\e[m (#{ask_offer.weighted_price} weighted average)" <<
-          " and SELL at \e[1m#{order_book_2.market}\e[m for #{fiat_in} at \e[1m#{bid_offer.price}\e[m (#{bid_offer.weighted_price})" <<
-          " - PROFIT = \e[1m#{profit}\e[m (including #{fee} fee)"
-      end
+      return if best_offer_limited_volume.profit < Money.new(1, "EUR") # don't care about tiny profits, it's just spam
+
+      best_offer_limited_volume.best_volume = best_volume
+
+      best_offer_limited_volume
     end
 
     def find_best_volume(order_book_1, order_book_2, max_volume)
-      volume = best_volume = BigDecimal.new(Config.min_volume)
+      volume = best_volume = BigDecimal.new(Devilicious.config.min_volume)
       best_profit = 0
 
       while volume < max_volume
@@ -122,13 +137,15 @@ module Devilicious
         volume += BigDecimal.new("0.1")
       end
 
-      [
-        order_book_1.min_ask_price_for_volume(order_book_2.highest_bid.price, best_volume),
-        order_book_2.max_bid_price_for_volume(order_book_1.lowest_ask.price, best_volume),
-        best_volume,
-        best_profit,
-        best_profit_fee,
-      ]
+      OpenStruct.new(
+        order_book_1: order_book_1,
+        order_book_2: order_book_2,
+        ask_offer: order_book_1.min_ask_price_for_volume(order_book_2.highest_bid.price, best_volume),
+        bid_offer: order_book_2.max_bid_price_for_volume(order_book_1.lowest_ask.price, best_volume),
+        volume: best_volume,
+        profit: best_profit,
+        fee: best_profit_fee,
+      )
     end
   end
 end

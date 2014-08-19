@@ -2,7 +2,7 @@ require "devilicious/markets/base"
 
 module Devilicious
   module Market
-    class Kraken < Base
+    class BtcE < Base
       def fiat_currency
         "EUR"
       end
@@ -12,24 +12,26 @@ module Devilicious
       end
 
       def refresh_order_book!
-        json = get_json("https://api.kraken.com/0/public/Depth?pair=XBT#{fiat_currency}")
+        json = get_json("https://btc-e.com/api/2/btc_#{fiat_currency.downcase}/depth")
 
-        asks = format_asks_bids(json["result"]["XXBTZ#{fiat_currency}"]["asks"])
-        bids = format_asks_bids(json["result"]["XXBTZ#{fiat_currency}"]["bids"])
+        asks = format_asks_bids(json["asks"])
+        bids = format_asks_bids(json["bids"])
 
         mark_as_refreshed
         @order_book = OrderBook.new(asks: asks, bids: bids)
       end
+
     private
 
       def format_asks_bids(json)
         json.map do |price, volume|
           Offer.new(
-            price: Money.new(price, fiat_currency),
-            volume: volume
+            price: Money.new(price.to_s, fiat_currency),
+            volume: volume.to_s
           ).freeze
         end
       end
     end
   end
 end
+

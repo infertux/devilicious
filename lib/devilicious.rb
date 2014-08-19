@@ -1,8 +1,6 @@
-require "devilicious/version"
-
 module Devilicious
-  def self.debug?
-    ARGV.include?("-d")
+  def self.config
+    @config ||= Config.parse(ARGV)
   end
 end
 
