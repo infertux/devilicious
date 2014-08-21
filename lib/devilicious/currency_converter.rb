@@ -1,3 +1,5 @@
+require "retryable"
+
 module Devilicious
   class CurrencyConverter
     @rates = {}
@@ -28,15 +30,16 @@ module Devilicious
 
       def self.get_rate(from, to)
         url = URL % [from, to]
-
-        begin
-          json = open(url).read
-        rescue OpenURI::HTTPError
-          retry
-        end
-
-        rate = JSON.parse(json)["rate"].to_s
+        json = get_json(url)
+        rate = json["rate"].to_s
         BigDecimal.new(rate)
+      end
+
+      def self.get_json(url)
+        retryable(tries: 3, sleep: 1) do
+          json = open(url).read
+          JSON.parse(json)
+        end
       end
     end
   end

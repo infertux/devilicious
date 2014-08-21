@@ -19,7 +19,7 @@ module Devilicious
 
         opts.separator ""
 
-        opts.on("-f", "--formatter TYPE", %w(Verbose Summary),
+        opts.on("-f", "--formatter TYPE", Formatter.list.keys,
                 "Select formatter (#{Formatter.list.keys.sort.join(", ")})") do |f|
           config.formatter = f
         end

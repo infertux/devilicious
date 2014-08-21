@@ -1,5 +1,6 @@
 require "open-uri"
 require "json"
+require "retryable"
 
 module Devilicious
   module Market
@@ -17,10 +18,8 @@ module Devilicious
     private
 
       def get_html(url)
-        begin
+        retryable(tries: 5, sleep: 1) do
           open(url).read
-        rescue OpenURI::HTTPError, Zlib::BufError
-          retry
         end
       end
 
