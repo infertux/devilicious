@@ -5,7 +5,9 @@ module Devilicious
 
         Market::Kraken,
         Market::BitcoinDe,
-        # Market::BtcE,
+        Market::BtcE,
+        Market::HitBtc,
+        Market::Bitcurex,
 
       ].map { |market| market.new }
     end
@@ -46,17 +48,19 @@ module Devilicious
       trap("EXIT", -> { Thread.list.each(&:kill) } )
 
       Thread.new do
+        timeout = Devilicious.config.market_refresh_rate
+
         loop do
           threads = markets.map do |market|
             Log.debug "Refreshing order book for #{market}..."
             Thread.new { market.refresh_order_book!; @market_queue << market }
           end
 
-          sleep Devilicious.config.market_refresh_rate
+          sleep timeout
 
           alive_threads = threads.select(&:alive?)
           unless alive_threads.empty?
-            Log.warn "Timeout for #{alive_threads.size} observer threads"
+            Log.warn "Timeout after #{timeout} seconds for #{alive_threads.size} observer threads"
           end
 
           threads.each do |thread|
