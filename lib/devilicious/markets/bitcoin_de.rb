@@ -14,15 +14,17 @@ module Devilicious
       end
 
       def refresh_order_book!
-        html = get_html("https://www.bitcoin.de/en/market")
+        retryable(tries: 2, sleep: 0, on: ScrappingError) do
+          html = get_html("https://www.bitcoin.de/en/market")
 
-        asks = format_asks_bids(html, "offer")
-        bids = format_asks_bids(html, "order")
+          asks = format_asks_bids(html, "offer")
+          bids = format_asks_bids(html, "order")
 
-        raise ScrappingError if asks.empty? || asks.size != bids.size
+          raise ScrappingError if asks.empty? || asks.size != bids.size
 
-        mark_as_refreshed
-        @order_book = OrderBook.new(asks: asks, bids: bids)
+          mark_as_refreshed
+          @order_book = OrderBook.new(asks: asks, bids: bids)
+        end
       end
 
     private
