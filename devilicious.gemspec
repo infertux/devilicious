@@ -4,7 +4,7 @@ $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 
 Gem::Specification.new do |spec|
   spec.name          = "devilicious"
-  spec.version       = "1.0.0"
+  spec.version       = "1.0.1"
   spec.authors       = ["Cédric Félizard"]
   spec.email         = ["cedric@felizard.fr"]
   spec.summary       = %q{Multi-currency Bitcoin arbitrage bot}
