@@ -2,19 +2,19 @@ require "devilicious/markets/base"
 
 module Devilicious
   module Market
-    class Bitcurex < Base
-      # NOTE: https://eur.bitcurex.com/
+    class Bitstamp < Base
+      # NOTE: https://www.bitstamp.net/
 
       def fiat_currency
-        "EUR"
+        "USD"
       end
 
       def trade_fee
-        BigDecimal.new("0.004").freeze # 0.4% - see https://eur.bitcurex.com/op%C5%82aty-i-limity
+        BigDecimal.new("0.005").freeze # 0.5% - see https://www.bitstamp.net/fee_schedule/
       end
 
       def refresh_order_book!
-        json = get_json("https://#{fiat_currency.downcase}.bitcurex.com/data/orderbook.json")
+        json = get_json("https://www.bitstamp.net/api/order_book/")
 
         asks = format_asks_bids(json["asks"])
         bids = format_asks_bids(json["bids"])
@@ -27,8 +27,11 @@ module Devilicious
 
       def format_asks_bids(json)
         json.map do |price, volume|
+          price_usd = Money.new(price, fiat_currency)
+          price_normalized = price_usd.exchange_to(Devilicious.config.default_fiat_currency)
+
           Offer.new(
-            price: Money.new(price, fiat_currency),
+            price: price_normalized,
             volume: volume
           ).freeze
         end

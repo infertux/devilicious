@@ -8,6 +8,9 @@ module Devilicious
         Market::BtcE,
         Market::HitBtc,
         Market::Bitcurex,
+        Market::Bitstamp,
+        Market::BitNz,
+        Market::AnxBtc,
 
       ].map { |market| market.new }
     end
@@ -114,7 +117,7 @@ module Devilicious
         best_offer_unlimited_volume
       end.volume
 
-      return if best_offer_limited_volume.profit < Money.new(1, "EUR") # don't care about tiny profits, it's just spam
+      return if best_offer_limited_volume.profit <= 0
 
       best_offer_limited_volume.best_volume = best_volume
 
