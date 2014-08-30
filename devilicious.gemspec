@@ -1,17 +1,16 @@
 # coding: utf-8
 lib = File.expand_path('../lib', __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
-require 'devilicious/version'
 
 Gem::Specification.new do |spec|
   spec.name          = "devilicious"
-  spec.version       = Devilicious::VERSION
+  spec.version       = "1.0.0"
   spec.authors       = ["Cédric Félizard"]
   spec.email         = ["cedric@felizard.fr"]
-  spec.summary       = %q{TODO: Write a short summary. Required.}
-  spec.description   = %q{TODO: Write a longer description. Optional.}
+  spec.summary       = %q{Multi-currency Bitcoin arbitrage bot}
+  spec.description   = spec.summary
   spec.homepage      = ""
-  spec.license       = ""
+  spec.license       = "AGPLv3"
 
   spec.files         = `git ls-files`.split($/)
   spec.executables   = spec.files.grep(%r{^bin/}) { |f| File.basename(f) }
