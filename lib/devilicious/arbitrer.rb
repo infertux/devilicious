@@ -117,7 +117,7 @@ module Devilicious
         best_offer_unlimited_volume
       end.volume
 
-      return if best_offer_limited_volume.profit <= 0
+      return if best_offer_limited_volume.profit < Devilicious.config.min_profit
 
       best_offer_limited_volume.best_volume = best_volume
 

@@ -13,6 +13,7 @@ module Devilicious
       config.beep_profit_threshold = BigDecimal.new("-1") # negative means disabled
       config.default_fiat_currency = "EUR" # ideally the most used currency so we do as little conversions as possible
       config.market_refresh_rate = 30 # order books expire delay in seconds
+      config.min_profit = 1 # in `default_fiat_currency` currency
 
       opt_parser = OptionParser.new do |opts|
         opts.banner = "Usage: devilicious [config]"
