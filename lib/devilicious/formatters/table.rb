@@ -7,10 +7,11 @@ module Devilicious
         @best_trades[pair] = opportunity
 
         Log.info "", timestamp: false
-        Log.info "PAIR                    \tPROFIT       \tVOLUME \tBUY          \tSELL", timestamp: false
+        Log.info "PAIR                    \tPROFIT       \tVOLUME \tBUY          \tSELL        \tPERCENT", timestamp: false
         @best_trades.sort_by { |_, opportunity| opportunity.profit }.each do |pair, opportunity|
           pair = pair.dup << " " * [30 - pair.size, 0].max # padding
-          Log.info [pair, opportunity.profit, opportunity.volume.to_f, opportunity.ask_offer.price, opportunity.bid_offer.price].join(" \t"), timestamp: false
+          percent = sprintf("%.2f%%", opportunity.profit / opportunity.ask_offer.price * 100)
+          Log.info [pair, opportunity.profit, opportunity.volume.to_f, opportunity.ask_offer.price, opportunity.bid_offer.price, percent].join(" \t"), timestamp: false
         end
       end
     end
