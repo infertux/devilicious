@@ -8,7 +8,7 @@ module Devilicious
       end
 
       def trade_fee
-        BigDecimal.new("0.002").freeze # 0.2%
+        BigDecimal.new("0.0035").freeze # 0.35%
       end
 
       def refresh_order_book!
