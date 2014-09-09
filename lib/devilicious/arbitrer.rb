@@ -27,8 +27,8 @@ module Devilicious
         markets.each do |market_2|
           next if market_1 == market_2
 
-          if market_2.order_book.nil?
-            Log.debug "Order book for #{market_2} not available yet, skipping"
+          if market_1.order_book.nil? || market_2.order_book.nil?
+            Log.debug "Order book(s) not available, skipping"
             next
           end
 

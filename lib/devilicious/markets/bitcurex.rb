@@ -14,7 +14,7 @@ module Devilicious
       end
 
       def refresh_order_book!
-        json = get_json("https://#{fiat_currency.downcase}.bitcurex.com/data/orderbook.json")
+        json = get_json("https://#{fiat_currency.downcase}.bitcurex.com/data/orderbook.json") or return
 
         asks = format_asks_bids(json["asks"])
         bids = format_asks_bids(json["bids"])

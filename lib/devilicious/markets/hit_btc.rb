@@ -14,7 +14,7 @@ module Devilicious
       end
 
       def refresh_order_book!
-        json = get_json("https://api.hitbtc.com/api/1/public/BTC#{fiat_currency}/orderbook")
+        json = get_json("https://api.hitbtc.com/api/1/public/BTC#{fiat_currency}/orderbook") or return
 
         asks = format_asks_bids(json["asks"])
         bids = format_asks_bids(json["bids"])

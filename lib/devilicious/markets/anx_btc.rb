@@ -12,7 +12,7 @@ module Devilicious
       end
 
       def refresh_order_book!
-        json = get_json("https://anxpro.com/api/2/BTC#{fiat_currency}/money/depth/full")
+        json = get_json("https://anxpro.com/api/2/BTC#{fiat_currency}/money/depth/full") or return
 
         asks = format_asks_bids(json["data"]["asks"])
         bids = format_asks_bids(json["data"]["bids"])

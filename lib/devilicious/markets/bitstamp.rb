@@ -14,7 +14,7 @@ module Devilicious
       end
 
       def refresh_order_book!
-        json = get_json("https://www.bitstamp.net/api/order_book/")
+        json = get_json("https://www.bitstamp.net/api/order_book/") or return
 
         asks = format_asks_bids(json["asks"])
         bids = format_asks_bids(json["bids"])

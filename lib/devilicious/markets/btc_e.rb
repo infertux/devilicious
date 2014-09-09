@@ -12,7 +12,7 @@ module Devilicious
       end
 
       def refresh_order_book!
-        json = get_json("https://btc-e.com/api/2/btc_#{fiat_currency.downcase}/depth")
+        json = get_json("https://btc-e.com/api/2/btc_#{fiat_currency.downcase}/depth") or return
 
         asks = format_asks_bids(json["asks"])
         bids = format_asks_bids(json["bids"])

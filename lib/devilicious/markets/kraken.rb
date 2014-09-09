@@ -12,7 +12,7 @@ module Devilicious
       end
 
       def refresh_order_book!
-        json = get_json("https://api.kraken.com/0/public/Depth?pair=XBT#{fiat_currency}")
+        json = get_json("https://api.kraken.com/0/public/Depth?pair=XBT#{fiat_currency}") or return
 
         asks = format_asks_bids(json["result"]["XXBTZ#{fiat_currency}"]["asks"])
         bids = format_asks_bids(json["result"]["XXBTZ#{fiat_currency}"]["bids"])

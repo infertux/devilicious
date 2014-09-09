@@ -18,14 +18,18 @@ module Devilicious
     private
 
       def get_html(url)
-        retryable(tries: 5, sleep: 1) do
-          open(url).read
+        begin
+          retryable(tries: 5, sleep: 1) do
+            open(url).read
+          end
+        rescue => e
+          Log.warn "#{self} error: #{e.inspect}"
         end
       end
 
       def get_json(url)
         html = get_html(url)
-        JSON.parse(html)
+        JSON.parse(html) if html
       end
 
       def mark_as_refreshed
